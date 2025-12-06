@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AdGrades
 
-## Getting Started
+Internal client workflow app built with Next.js, Tailwind CSS, and Antigravity.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Secure Authentication**: 3-user limit, bcrypt hashing, HTTP-only sessions.
+- **Dashboard**: KPI overview and workflow triggers.
+- **Client Management**: Searchable client list, detailed client views with tabs.
+- **Workflow Integration**: Placeholders for n8n webhooks (Research, Package generation).
+- **Services**: Dynamic service selection and package pricing calculator.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2.  **Configure Environment**
+    Copy `.env.example` to `.env` and fill in the values.
+    ```bash
+    cp .env.example .env
+    ```
 
-## Learn More
+    **Generating Password Hashes:**
+    Run this command to generate a bcrypt hash for your passwords:
+    ```bash
+    node -e "console.log(require('bcrypt').hashSync('yourPassword', 12))"
+    ```
+    Paste the output into `USER*_HASH` in `.env`.
 
-To learn more about Next.js, take a look at the following resources:
+3.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4.  **Run Smoke Test**
+    ```bash
+    npm run test:smoke
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment Variables
 
-## Deploy on Vercel
+- `USER*_ID`: Username for login.
+- `USER*_HASH`: Bcrypt hash of the password.
+- `SESSION_SECRET`: Long random string for session signing.
+- `N8N_WEBHOOK_*`: URLs for n8n workflows. If empty, the app uses placeholder responses.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Security Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Rate limiting is enabled (5 attempts / 15 mins).
+- Sessions are valid for 12 hours.
+- In production, ensure `NODE_ENV=production` is set for secure cookies.
