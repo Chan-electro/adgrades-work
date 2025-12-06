@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# =========================
+# Dependencies
+# =========================
 /node_modules
 /.pnp
 .pnp.*
@@ -10,32 +12,137 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# =========================
+# Testing
+# =========================
 /coverage
+*.lcov
+.nyc_output
 
-# next.js
+# =========================
+# Next.js
+# =========================
 /.next/
 /out/
+next-env.d.ts
 
-# production
+# =========================
+# Production Build
+# =========================
 /build
+/dist
 
-# misc
+# =========================
+# Environment Files
+# =========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# =========================
+# Database (Prisma + SQLite)
+# =========================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+/prisma/migrations/.migration_lock.toml
+/src/generated/prisma
+
+# =========================
+# Storage/Uploads
+# =========================
+/storage/
+/uploads/
+
+# =========================
+# IDE / Editor
+# =========================
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Keep VSCode settings if needed, but ignore local history
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history
+
+# =========================
+# OS Files
+# =========================
 .DS_Store
-*.pem
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
 
-# debug
+# =========================
+# Debug / Logs
+# =========================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
+logs/
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# =========================
+# TypeScript
+# =========================
 *.tsbuildinfo
-next-env.d.ts
+tsconfig.tsbuildinfo
+
+# =========================
+# Temporary Files
+# =========================
+*.tmp
+*.temp
+*.bak
+*.cache
+.cache/
+tmp/
+temp/
+
+# =========================
+# Deployment / Hosting
+# =========================
+.vercel
+.netlify
+
+# =========================
+# Miscellaneous
+# =========================
+*.pem
+*.key
+*.crt
+
+# Turbopack
+.turbo
+
+# PWA
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+
+# Storybook
+storybook-static/
+
+# Text files created during debugging
+tsc_output.txt
+tsc_final.txt

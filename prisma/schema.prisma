@@ -1,0 +1,162 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  meetings      Meeting[]
+  availability  Availability?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  days      String   // JSON string e.g. "[1,2,3,4,5]"
+  startTime String   // "09:00"
+  endTime   String   // "17:00"
+  timeZone  String   @default("UTC")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Meeting {
+  id            String   @id @default(cuid())
+  userId        String
+  guestName     String
+  guestEmail    String
+  guestNotes    String?
+  startTime     DateTime
+  endTime       DateTime
+  googleEventId String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id            String    @id @default(cuid())
+  clientId      String?
+  clientName    String?
+  clientAddress String?
+  client        Client?   @relation(fields: [clientId], references: [id])
+  items         String?   // JSON string of line items
+  taxRate       Float     @default(0)
+  discount      Float     @default(0)
+  notes         String?
+  amount        Float
+  currency      String
+  status        String    // draft, sent, paid, overdue
+  invoiceNumber String    @unique
+  dueDate       DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  payments      Payment[]
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String?
+  amount        Float
+  type          String   // online, offline
+  transactionId String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+}
+
+model Client {
+  id            String    @id @default(cuid())
+  name          String
+  industry      String?
+  website       String?
+  address       String?
+  contactPerson String?
+  email         String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  invoices      Invoice[]
+  agreements    Agreement[]
+  researchDocs  ResearchDoc[]
+}
+
+model ResearchDoc {
+  id        String   @id @default(cuid())
+  clientId  String?
+  title     String
+  content   String   // Large text content
+  createdAt DateTime @default(now())
+  
+  client    Client?  @relation(fields: [clientId], references: [id])
+}
+
+model Agreement {
+  id        String   @id @default(cuid())
+  clientId  String?
+  status    String   // draft, sent, signed
+  content   String?  // JSON or text content of the agreement
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  client    Client?  @relation(fields: [clientId], references: [id])
+}
+
+model Agency {
+  id        String   @id @default(cuid())
+  name      String   @default("AdGrades Agency")
+  address   String?
+  website   String?
+  taxId     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  type       String   // "invoice" or "agreement"
+  fileName   String   // e.g., "INV-2024-0001.pdf"
+  filePath   String   // e.g., "storage/invoices/INV-2024-0001.pdf"
+  invoiceId  String?
+  agreementId String?
+  clientId   String?
+  createdAt  DateTime @default(now())
+}
