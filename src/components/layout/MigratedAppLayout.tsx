@@ -14,10 +14,31 @@ export const MigratedAppLayout = ({ children }: { children?: React.ReactNode }) 
     const router = useRouter();
     const pathname = usePathname();
     const [mounted, setMounted] = useState(false);
+    const [userName, setUserName] = useState<string | null>(null);
 
     React.useEffect(() => {
         setMounted(true);
+        // Fetch user session to get the logged-in user's name
+        fetch('/api/auth/session')
+            .then(res => res.json())
+            .then(data => {
+                if (data.userId) {
+                    setUserName(data.userId);
+                }
+            })
+            .catch(() => { });
     }, []);
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            router.push('/login');
+            router.refresh();
+        } catch (error) {
+            console.error('Logout failed:', error);
+            router.push('/login');
+        }
+    };
 
     const isDark = resolvedTheme === 'dark';
     const toggleTheme = () => setTheme(isDark ? 'light' : 'dark');
@@ -119,16 +140,16 @@ export const MigratedAppLayout = ({ children }: { children?: React.ReactNode }) 
 
                         <div className="flex items-center gap-3 border-l border-border pl-4">
                             <div className="hidden text-right text-sm md:block">
-                                <p className="font-medium text-foreground">Demo User</p>
+                                <p className="font-medium text-foreground">{userName || 'Admin User'}</p>
                                 <p className="text-xs text-muted-foreground">Admin</p>
                             </div>
                             <div className="relative group cursor-pointer">
                                 <div className="h-9 w-9 overflow-hidden rounded-full bg-blue-100 border border-blue-200 dark:bg-blue-900 dark:border-blue-800 flex items-center justify-center">
                                     <User className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                                 </div>
-                                {/* Dropdown Menu Mock */}
+                                {/* Dropdown Menu */}
                                 <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-md border border-zinc-200 bg-white p-1 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all dark:border-zinc-800 dark:bg-zinc-950">
-                                    <button onClick={() => router.push('/login')} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                    <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                                         <LogOut className="h-4 w-4" />
                                         Logout
                                     </button>

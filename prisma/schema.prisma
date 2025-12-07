@@ -16,8 +16,39 @@ model User {
   sessions      Session[]
   meetings      Meeting[]
   availability  Availability?
+  calendlyConnection CalendlyConnection?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model CalendlyConnection {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  accessToken   String
+  refreshToken  String
+  expiresAt     DateTime
+  calendlyUri   String   // Calendly user URI
+  schedulingUrl String?  // User's main booking page URL
+  organization  String?  // Calendly organization URI
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Global/shared Calendly connection for the entire agency
+model AgencyCalendlyConnection {
+  id            String   @id @default(cuid())
+  accessToken   String
+  refreshToken  String
+  expiresAt     DateTime
+  calendlyUri   String   // Calendly user URI
+  schedulingUrl String?  // Main booking page URL
+  ownerEmail    String   // Email of the Calendly account owner
+  ownerName     String?  // Name of the Calendly account owner
+  organization  String?  // Calendly organization URI
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Account {
@@ -103,16 +134,21 @@ model Payment {
 }
 
 model Client {
-  id            String    @id @default(cuid())
-  name          String
-  industry      String?
-  website       String?
-  address       String?
-  contactPerson String?
-  email         String?
-  phone         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  industry        String?
+  website         String?
+  address         String?
+  contactPerson   String?
+  email           String?
+  phone           String?
+  // Prompt generator fields
+  companyInfo       String?   // Company description/info
+  domainOrIndustry  String?   // Domain or industry for research
+  niche             String?   // Specific niche
+  businessModel     String?   // B2B, B2C, etc.
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   
   invoices      Invoice[]
   agreements    Agreement[]

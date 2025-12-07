@@ -7,8 +7,11 @@ import { Users, FileText, Receipt, ArrowRight, Activity, Plus } from 'lucide-rea
 import { Card, Button, PageHeader, Badge } from '@/components/ui-migrated';
 import { CountUp, DashboardPipeline } from '@/components/visuals';
 
-const StatCard = ({ title, value, icon: Icon, color }: any) => (
-    <Card className="p-6">
+const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
+    <Card
+        className="p-6 cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]"
+        onClick={onClick}
+    >
         <div className="flex items-center justify-between">
             <div>
                 <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -73,13 +76,31 @@ export default function DashboardPage() {
                 className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             >
                 <motion.div variants={item}>
-                    <StatCard title="Total Clients" value={stats.totalClients} icon={Users} color="bg-blue-500" />
+                    <StatCard
+                        title="Total Clients"
+                        value={stats.totalClients}
+                        icon={Users}
+                        color="bg-blue-500"
+                        onClick={() => router.push('/clients')}
+                    />
                 </motion.div>
                 <motion.div variants={item}>
-                    <StatCard title="Signed Agreements" value={stats.activeAgreements} icon={FileText} color="bg-indigo-500" />
+                    <StatCard
+                        title="Signed Agreements"
+                        value={stats.activeAgreements}
+                        icon={FileText}
+                        color="bg-indigo-500"
+                        onClick={() => router.push('/agreements')}
+                    />
                 </motion.div>
                 <motion.div variants={item}>
-                    <StatCard title="Outstanding Invoices" value={stats.outstandingInvoices} icon={Receipt} color="bg-amber-500" />
+                    <StatCard
+                        title="Outstanding Invoices"
+                        value={stats.outstandingInvoices}
+                        icon={Receipt}
+                        color="bg-amber-500"
+                        onClick={() => router.push('/invoices')}
+                    />
                 </motion.div>
             </motion.div>
 

@@ -40,8 +40,9 @@ export default function CreateInvoicePage() {
     // Client Selection State
     const [clients, setClients] = useState<any[]>([]);
 
-    // Fetch clients on mount
+    // Fetch clients, agency settings, and next invoice number on mount
     useEffect(() => {
+        // Fetch clients
         fetch('/api/clients')
             .then(res => res.json())
             .then(data => {
@@ -59,6 +60,20 @@ export default function CreateInvoicePage() {
                         businessName: data.name || prev.businessName,
                         businessAddress: data.address || prev.businessAddress
                     }))
+                }
+            })
+            .catch(console.error);
+
+        // Fetch next invoice number
+        fetch('/api/finance/invoices/next-number')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.sequence) {
+                    setInvoiceData(prev => ({
+                        ...prev,
+                        sequence: data.sequence,
+                        invoiceNumber: data.nextNumber
+                    }));
                 }
             })
             .catch(console.error);

@@ -146,3 +146,20 @@ storybook-static/
 # Text files created during debugging
 tsc_output.txt
 tsc_final.txt
+
+# =========================
+# Production Data
+# =========================
+/data/
+/backups/
+
+# =========================
+# Railway / Fly.io
+# =========================
+fly.toml
+Dockerfile.prod
+
+# =========================
+# Calendly
+# =========================
+calendly-credentials.json

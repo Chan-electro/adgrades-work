@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Download, RefreshCw, ExternalLink, Zap, Search, Target, Brain, Trophy, DollarSign, Edit, Megaphone, TrendingUp, Info, X, Check, Save } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -16,6 +16,18 @@ interface FormData {
 }
 
 export default function PromptGeneratorPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-[60vh]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        }>
+            <PromptGeneratorContent />
+        </Suspense>
+    );
+}
+
+function PromptGeneratorContent() {
     const searchParams = useSearchParams();
     const clientId = searchParams.get('clientId');
 
@@ -33,10 +45,12 @@ export default function PromptGeneratorPage() {
     const [showPostDownload, setShowPostDownload] = useState(false);
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [loadingClient, setLoadingClient] = useState(false);
 
     // Fetch client details if clientId is present
-    useState(() => {
+    useEffect(() => {
         if (clientId) {
+            setLoadingClient(true);
             fetch(`/api/clients/${clientId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -44,15 +58,20 @@ export default function PromptGeneratorPage() {
                         setFormData(prev => ({
                             ...prev,
                             businessName: data.name || '',
+                            companyInfo: data.companyInfo || '',
+                            domainOrIndustry: data.domainOrIndustry || '',
+                            industry: data.industry || '',
+                            niche: data.niche || '',
                             location: data.address || '',
-                            industry: data.industry || ''
+                            businessModel: data.businessModel || ''
                         }));
                         toast.success(`Loaded details for ${data.name}`);
                     }
                 })
-                .catch(err => console.error(err));
+                .catch(err => console.error(err))
+                .finally(() => setLoadingClient(false));
         }
-    });
+    }, [clientId]);
 
     const generatePromptTemplate = (data: FormData): string => {
         return `# ═══════════════════════════════════════════════════════════════════════════════

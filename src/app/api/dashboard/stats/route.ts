@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
+        // Calculate date for 1 week ago
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
         const [
             clientCount,
             invoiceCount,
@@ -15,8 +19,17 @@ export async function GET() {
             prisma.invoice.count(),
             prisma.agreement.count({ where: { status: 'Signed' } }),
             prisma.invoice.count({ where: { status: { not: 'paid' } } }),
-            prisma.client.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
-            prisma.invoice.findMany({ take: 5, orderBy: { createdAt: 'desc' }, include: { client: true } })
+            prisma.client.findMany({
+                where: { createdAt: { gte: oneWeekAgo } },
+                take: 10,
+                orderBy: { createdAt: 'desc' }
+            }),
+            prisma.invoice.findMany({
+                where: { createdAt: { gte: oneWeekAgo } },
+                take: 10,
+                orderBy: { createdAt: 'desc' },
+                include: { client: true }
+            })
         ]);
 
         // Combine recent items for activity feed

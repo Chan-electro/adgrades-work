@@ -1,12 +1,17 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Receipt, Package, Clock, ArrowRight, Play, DollarSign, Activity, File, Download, Plus } from 'lucide-react';
+import {
+    FileText, Receipt, Package, Clock, ArrowRight, Play, DollarSign, Activity,
+    Download, Plus, Mail, Phone, Globe, MapPin, Building2, User, Trash2,
+    Briefcase, Target, Search
+} from 'lucide-react';
 import { Card, Button, Badge, PageHeader } from '@/components/ui-migrated';
 import { SmallOrb, LoadingBar, SignatureAnimation, ConfettiEffect, CountUp } from '@/components/visuals';
 import { toast } from 'sonner';
+import { DeleteClientDialog } from '@/components/clients/delete-client-dialog';
 
 // --- Sub Components for Tabs ---
 
@@ -15,7 +20,8 @@ const ResearchTab = ({ onRunResearch, isRunning, hasResearch, docs }: any) => (
         <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Research Documents</h3>
             <Button onClick={onRunResearch} disabled={isRunning}>
-                {isRunning ? 'Running Analysis...' : 'Run Research (n8n)'}
+                <Search className="mr-2 h-4 w-4" />
+                {isRunning ? 'Running Analysis...' : 'Generate Research Prompt'}
             </Button>
         </div>
 
@@ -23,7 +29,7 @@ const ResearchTab = ({ onRunResearch, isRunning, hasResearch, docs }: any) => (
             <Card className="p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800">
                 <div className="flex items-center gap-4 mb-3">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent" />
-                    <span className="font-medium text-blue-700 dark:text-blue-300">Generating market analysis...</span>
+                    <span className="font-medium text-blue-700 dark:text-blue-300">Redirecting to Prompt Generator...</span>
                 </div>
                 <LoadingBar isLoading={true} />
             </Card>
@@ -44,20 +50,26 @@ const ResearchTab = ({ onRunResearch, isRunning, hasResearch, docs }: any) => (
                             <Button variant="outline" size="sm">View Doc</Button>
                         </div>
                     )) : (
-                        // Placeholder if simply "hasResearch" is true but no docs loaded yet
-                        <div className="p-4 flex justify-between items-center hover:bg-muted/50 transition-colors">
-                            <div className="flex gap-4 items-center">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600"><FileText className="h-5 w-5" /></div>
-                                <div>
-                                    <p className="font-medium">Market Competitor Analysis (Demo)</p>
-                                    <p className="text-xs text-zinc-500">Generated just now</p>
-                                </div>
-                            </div>
-                            <Button variant="outline" size="sm">View Doc</Button>
+                        <div className="p-8 text-center text-muted-foreground">
+                            <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            <p>No research documents yet</p>
+                            <p className="text-sm">Click "Generate Research Prompt" to get started</p>
                         </div>
                     )}
                 </Card>
             </motion.div>
+        )}
+
+        {!hasResearch && docs.length === 0 && (
+            <Card className="p-8 text-center text-muted-foreground border-dashed">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No research documents yet</p>
+                <p className="text-sm mb-4">Generate a research prompt to perform market analysis</p>
+                <Button onClick={onRunResearch} disabled={isRunning}>
+                    <Search className="mr-2 h-4 w-4" />
+                    Generate Research Prompt
+                </Button>
+            </Card>
         )}
     </div>
 );
@@ -211,7 +223,10 @@ export default function ClientDetailPage() {
             fetch(`/api/finance/invoices?clientId=${id}`).then(res => res.json())
         ]).then(([clientData, researchData, agreementsData, invoicesData]) => {
             if (clientData && !clientData.error) setClient(clientData);
-            if (Array.isArray(researchData)) setResearchDocs(researchData);
+            if (Array.isArray(researchData)) {
+                setResearchDocs(researchData);
+                setHasResearch(researchData.length > 0);
+            }
             if (Array.isArray(agreementsData)) setAgreements(agreementsData);
             if (Array.isArray(invoicesData)) setInvoices(invoicesData);
         }).catch(err => {
@@ -230,28 +245,20 @@ export default function ClientDetailPage() {
 
     }, [id]);
 
+    // Calculate total revenue from paid invoices
+    const totalRevenue = invoices
+        .filter((inv: any) => inv.status === 'Paid')
+        .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
 
     // Handlers
-    const handleRunResearch = async () => {
+    const handleRunResearch = () => {
         setResearchRunning(true);
         setActiveTab('research');
 
-        // Attempt real API call if exists, fall back to mock delay for demo
-        try {
-            await fetch('/api/workflows/research', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId: id })
-            });
-            toast.success("Research workflow triggered");
-        } catch (e) {
-            console.error("Workflow trigger failed, using demo simulation");
-        }
-
+        // Redirect to prompt generator with client ID
         setTimeout(() => {
-            setResearchRunning(false);
-            setHasResearch(true);
-        }, 3000);
+            router.push(`/prompt-generator?clientId=${id}`);
+        }, 500);
     };
 
     const handleSignAgreement = (agreementId: string) => {
@@ -287,9 +294,13 @@ export default function ClientDetailPage() {
         }
     };
 
+    const handleClientDeleted = () => {
+        router.push('/clients');
+    };
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Activity },
-        { id: 'research', label: 'Research', icon: Clock },
+        { id: 'research', label: 'Research', icon: Search },
         { id: 'packages', label: 'Packages', icon: Package },
         { id: 'agreements', label: 'Agreements', icon: FileText },
         { id: 'invoices', label: 'Invoices', icon: DollarSign },
@@ -305,47 +316,171 @@ export default function ClientDetailPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header Card */}
+            {/* Header Card - Revamped */}
             <Card className="p-0 overflow-hidden border-none shadow-md">
-                <div className="h-32 bg-gradient-to-r from-blue-900 to-slate-900 relative">
+                <div className="h-32 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
                     <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-80">
                         <SmallOrb />
                     </div>
                 </div>
                 <div className="p-6 pt-0 relative">
-                    <div className="-mt-12 mb-4 flex justify-between items-end">
-                        <div className="h-24 w-24 rounded-xl bg-white dark:bg-zinc-900 p-1 shadow-lg">
-                            <div className="h-full w-full bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center text-3xl font-bold text-blue-600">
-                                {client.name.substring(0, 2).toUpperCase()}
+                    <div className="-mt-12 mb-4 flex flex-col lg:flex-row justify-between lg:items-end gap-4">
+                        <div className="flex items-end gap-4">
+                            <div className="h-24 w-24 rounded-xl bg-white dark:bg-zinc-900 p-1 shadow-lg flex-shrink-0">
+                                <div className="h-full w-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-3xl font-bold text-white">
+                                    {client.name.substring(0, 2).toUpperCase()}
+                                </div>
+                            </div>
+                            <div className="pb-1">
+                                <h1 className="text-2xl md:text-3xl font-bold text-foreground">{client.name}</h1>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {client.industry && (
+                                        <Badge variant="neutral" className="text-xs">
+                                            <Briefcase className="h-3 w-3 mr-1" />
+                                            {client.industry}
+                                        </Badge>
+                                    )}
+                                    {client.businessModel && (
+                                        <Badge variant="neutral" className="text-xs">
+                                            <Target className="h-3 w-3 mr-1" />
+                                            {client.businessModel}
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            <Button onClick={handleRunResearch}>
-                                <Play className="mr-2 h-4 w-4" /> Run Research
+                        <div className="flex flex-wrap gap-2">
+                            <Button onClick={handleRunResearch} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                                <Search className="mr-2 h-4 w-4" /> Run Research
                             </Button>
                             <Button variant="outline" onClick={() => router.push(`/agreements/create?clientId=${id}`)}>
-                                <Plus className="mr-2 h-4 w-4" /> Create Agreement
+                                <Plus className="mr-2 h-4 w-4" /> Agreement
                             </Button>
                             <Button variant="outline" onClick={() => router.push(`/invoices/create?clientId=${id}`)}>
-                                <Plus className="mr-2 h-4 w-4" /> Create Invoice
+                                <Plus className="mr-2 h-4 w-4" /> Invoice
                             </Button>
-                            <Button variant="outline" onClick={() => router.push(`/clients/${id}/services`)}>
-                                Go to Sales & Services <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-bold">{client.name}</h1>
-                        <div className="flex gap-4 text-sm text-zinc-500 mt-1">
-                            <span>{client.industry || 'Unknown Industry'}</span>
-                            <span>•</span>
-                            <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{client.website || 'No Website'}</a>
-                            {/* <span>•</span>
-                    <span>Primary Contact</span> */}
+                            <DeleteClientDialog
+                                clientId={id}
+                                clientName={client.name}
+                                onDeleted={handleClientDeleted}
+                                trigger={
+                                    <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                }
+                            />
                         </div>
                     </div>
                 </div>
             </Card>
+
+            {/* Contact Info & Stats Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Contact Information */}
+                <Card className="p-6 lg:col-span-2">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        Contact Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {client.contactPerson && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Contact Person</p>
+                                    <p className="font-medium">{client.contactPerson}</p>
+                                </div>
+                            </div>
+                        )}
+                        {client.email && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                    <Mail className="h-4 w-4 text-green-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Email</p>
+                                    <a href={`mailto:${client.email}`} className="font-medium text-blue-600 hover:underline">{client.email}</a>
+                                </div>
+                            </div>
+                        )}
+                        {client.phone && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                    <Phone className="h-4 w-4 text-purple-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Phone</p>
+                                    <a href={`tel:${client.phone}`} className="font-medium">{client.phone}</a>
+                                </div>
+                            </div>
+                        )}
+                        {client.website && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                    <Globe className="h-4 w-4 text-orange-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Website</p>
+                                    <a href={client.website} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">{client.website}</a>
+                                </div>
+                            </div>
+                        )}
+                        {client.address && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 md:col-span-2">
+                                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                    <MapPin className="h-4 w-4 text-red-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Address</p>
+                                    <p className="font-medium">{client.address}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
+                {/* Quick Stats */}
+                <Card className="p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                        Quick Stats
+                    </h3>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                            <span className="text-muted-foreground flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-green-600" />
+                                Total Revenue
+                            </span>
+                            <span className="font-bold text-lg text-green-600">
+                                ₹{totalRevenue.toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Agreements</span>
+                            <span className="font-medium">{agreements.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Total Invoices</span>
+                            <span className="font-medium">{invoices.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Open Invoices</span>
+                            <span className="font-medium text-amber-500">{invoices.filter((i: any) => i.status !== 'Paid').length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Research Docs</span>
+                            <span className="font-medium">{researchDocs.length}</span>
+                        </div>
+                        <div className="pt-2 border-t border-border">
+                            <p className="text-xs text-muted-foreground">
+                                Client since {new Date(client.createdAt).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            </div>
 
             {/* Tabs Navigation */}
             <div className="border-b border-zinc-200 dark:border-zinc-800">
@@ -394,23 +529,36 @@ export default function ClientDetailPage() {
                                     ))}
                                 </div>
                             </Card>
-                            <Card className="p-6">
-                                <h3 className="font-semibold mb-4">Quick Stats</h3>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-500">LTV</span>
-                                        <span className="font-medium font-mono">$0</span>
+
+                            {/* Business Info Card */}
+                            {(client.companyInfo || client.niche || client.domainOrIndustry) && (
+                                <Card className="p-6">
+                                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                                        Business Profile
+                                    </h3>
+                                    <div className="space-y-3 text-sm">
+                                        {client.domainOrIndustry && (
+                                            <div>
+                                                <p className="text-muted-foreground text-xs">Domain/Industry</p>
+                                                <p className="font-medium">{client.domainOrIndustry}</p>
+                                            </div>
+                                        )}
+                                        {client.niche && (
+                                            <div>
+                                                <p className="text-muted-foreground text-xs">Niche</p>
+                                                <p className="font-medium">{client.niche}</p>
+                                            </div>
+                                        )}
+                                        {client.companyInfo && (
+                                            <div>
+                                                <p className="text-muted-foreground text-xs">About</p>
+                                                <p className="font-medium line-clamp-4">{client.companyInfo}</p>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-500">Agreements</span>
-                                        <span className="font-medium">{agreements.length}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-500">Open Invoices</span>
-                                        <span className="font-medium text-amber-500">{invoices.filter((i: any) => i.status !== 'Paid').length}</span>
-                                    </div>
-                                </div>
-                            </Card>
+                                </Card>
+                            )}
                         </div>
                     )}
                     {activeTab === 'research' && (
