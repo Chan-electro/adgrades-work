@@ -94,8 +94,10 @@ function SchedulerPageContent() {
         const calendlyParam = searchParams.get("calendly");
         const errorParam = searchParams.get("error");
 
-        if (calendlyParam === "connected") {
+        if (calendlyParam === "connected" || calendlyParam === "agency_connected") {
             showToast("Calendly connected successfully!", "success");
+            // Refresh status to show new connection
+            fetchCalendlyStatus();
             // Clean up URL
             window.history.replaceState({}, "", "/scheduler");
         } else if (errorParam) {
