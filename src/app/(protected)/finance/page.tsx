@@ -86,7 +86,7 @@ export default function FinancePage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold text-green-600">
-                            ${totalRevenue.toLocaleString()}
+                            ₹{totalRevenue.toLocaleString()}
                         </div>
                         <p className="text-sm text-gray-500 mt-2">
                             Across {payments.length} transactions
@@ -102,7 +102,7 @@ export default function FinancePage() {
                     <CardContent>
                         <form onSubmit={handlePaymentSubmit} className="space-y-4">
                             <div>
-                                <Label htmlFor="amount">Amount ($)</Label>
+                                <Label htmlFor="amount">Amount (₹)</Label>
                                 <Input
                                     id="amount"
                                     type="number"
@@ -169,7 +169,7 @@ export default function FinancePage() {
                                         </p>
                                     </div>
                                     <div className="font-bold text-green-600">
-                                        +${payment.amount.toLocaleString()}
+                                        +₹{payment.amount.toLocaleString()}
                                     </div>
                                 </div>
                             ))
