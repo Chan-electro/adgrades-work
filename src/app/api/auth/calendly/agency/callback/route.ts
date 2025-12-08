@@ -5,15 +5,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth-config";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, getCurrentUser } from "@/lib/calendly";
 
 export async function GET(request: NextRequest) {
     try {
-        const session = await auth();
+        const session = await getSession();
 
-        if (!session?.user?.id) {
+        if (!session?.userId) {
             return NextResponse.redirect(
                 new URL("/login", process.env.NEXTAUTH_URL)
             );

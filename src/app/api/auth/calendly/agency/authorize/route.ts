@@ -6,14 +6,14 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth-config";
+import { getSession } from "@/lib/auth";
 import { getAuthorizationUrl } from "@/lib/calendly";
 
 export async function GET() {
     try {
-        const session = await auth();
+        const session = await getSession();
 
-        if (!session?.user?.id) {
+        if (!session?.userId) {
             return NextResponse.redirect(
                 new URL("/login", process.env.NEXTAUTH_URL)
             );
@@ -23,7 +23,7 @@ export async function GET() {
         const state = Buffer.from(
             JSON.stringify({
                 type: "agency",
-                userId: session.user.id,
+                userId: session.userId,
                 timestamp: Date.now(),
             })
         ).toString("base64");

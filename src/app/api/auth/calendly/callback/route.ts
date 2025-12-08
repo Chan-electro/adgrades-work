@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth-config";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, getCurrentUser } from "@/lib/calendly";
 
@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
         }
 
         // Get current session
-        const session = await auth();
+        const session = await getSession();
 
-        if (!session?.user?.id) {
+        if (!session?.userId) {
             return NextResponse.redirect(
-                new URL("/scheduler/login", process.env.NEXTAUTH_URL)
+                new URL("/login", process.env.NEXTAUTH_URL)
             );
         }
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
                     isAgencyConnection = true;
                 } else {
                     // Check if state matches current user (for per-user connections)
-                    if (decodedState.userId !== session.user.id) {
+                    if (decodedState.userId !== session.userId) {
                         console.error("State mismatch: user ID doesn't match");
                         return NextResponse.redirect(
                             new URL("/scheduler?error=state_mismatch", process.env.NEXTAUTH_URL)
@@ -115,24 +115,24 @@ export async function GET(request: NextRequest) {
         // Per-user connection
         // Ensure user exists in database (for internal auth users who don't have User records)
         await prisma.user.upsert({
-            where: { id: session.user.id },
+            where: { id: session.userId },
             create: {
-                id: session.user.id,
-                email: session.user.email || calendlyUser.email,
-                name: session.user.name || calendlyUser.name,
-                image: session.user.image || calendlyUser.avatar_url,
+                id: session.userId,
+                email: calendlyUser.email,
+                name: calendlyUser.name,
+                image: calendlyUser.avatar_url,
             },
             update: {
                 // Only update if fields are empty
-                email: session.user.email || calendlyUser.email,
+                email: calendlyUser.email,
             },
         });
 
         // Store or update Calendly connection
         await prisma.calendlyConnection.upsert({
-            where: { userId: session.user.id },
+            where: { userId: session.userId },
             create: {
-                userId: session.user.id,
+                userId: session.userId,
                 accessToken: tokens.access_token,
                 refreshToken: tokens.refresh_token,
                 expiresAt,
