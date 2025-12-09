@@ -5,7 +5,8 @@
 
 */
 -- AlterTable
-ALTER TABLE "CalendlyConnection" ADD COLUMN "schedulingUrl" TEXT;
+-- AlterTable
+-- ALTER TABLE "CalendlyConnection" ADD COLUMN "schedulingUrl" TEXT; -- Skipped: Already exists in production
 
 -- AlterTable
 ALTER TABLE "Client" ADD COLUMN "businessModel" TEXT;
