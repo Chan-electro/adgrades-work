@@ -6,13 +6,13 @@
 */
 -- AlterTable
 -- AlterTable
--- ALTER TABLE "CalendlyConnection" ADD COLUMN "schedulingUrl" TEXT; -- Skipped: Already exists in production
+ALTER TABLE "CalendlyConnection" ADD COLUMN "schedulingUrl" TEXT;
 
 -- AlterTable
--- ALTER TABLE "Client" ADD COLUMN "businessModel" TEXT; -- Skipped: Already exists
--- ALTER TABLE "Client" ADD COLUMN "companyInfo" TEXT; -- Skipped: Likely exists
--- ALTER TABLE "Client" ADD COLUMN "domainOrIndustry" TEXT; -- Skipped: Likely exists
--- ALTER TABLE "Client" ADD COLUMN "niche" TEXT; -- Skipped: Likely exists
+ALTER TABLE "Client" ADD COLUMN "businessModel" TEXT;
+ALTER TABLE "Client" ADD COLUMN "companyInfo" TEXT;
+ALTER TABLE "Client" ADD COLUMN "domainOrIndustry" TEXT;
+ALTER TABLE "Client" ADD COLUMN "niche" TEXT;
 ALTER TABLE "Client" ADD COLUMN "packagePrice" REAL;
 ALTER TABLE "Client" ADD COLUMN "packageServices" TEXT;
 ALTER TABLE "Client" ADD COLUMN "selectedPackage" TEXT;
