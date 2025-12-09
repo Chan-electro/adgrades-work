@@ -54,7 +54,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
                 where: { clientId: id },
             });
 
-            // Delete payments related to invoices of this client
+            // Delete transactions related to invoices of this client
             const invoices = await tx.invoice.findMany({
                 where: { clientId: id },
                 select: { id: true },
@@ -62,7 +62,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             const invoiceIds = invoices.map(inv => inv.id);
 
             if (invoiceIds.length > 0) {
-                await tx.payment.deleteMany({
+                await tx.transaction.deleteMany({
                     where: { invoiceId: { in: invoiceIds } },
                 });
             }

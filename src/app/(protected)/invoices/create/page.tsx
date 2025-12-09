@@ -16,7 +16,9 @@ import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
 import { ClientCreateDialog } from '@/components/clients/client-create-dialog';
 
-export default function CreateInvoicePage() {
+import { Suspense } from 'react';
+
+function CreateInvoiceContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const invoiceId = searchParams.get('invoiceId');
@@ -514,5 +516,13 @@ export default function CreateInvoicePage() {
                 </Card >
             </div >
         </div >
+    );
+}
+
+export default function CreateInvoicePage() {
+    return (
+        <Suspense fallback={<div>Loading invoice editor...</div>}>
+            <CreateInvoiceContent />
+        </Suspense>
     );
 }

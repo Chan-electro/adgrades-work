@@ -10,7 +10,7 @@ export async function GET(req: Request) {
         const invoices = await prisma.invoice.findMany({
             where: clientId ? { clientId } : undefined,
             orderBy: { createdAt: 'desc' },
-            include: { payments: true, client: true }
+            include: { transactions: true, client: true }
         });
         return NextResponse.json(invoices);
     } catch (error) {
