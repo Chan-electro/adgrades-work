@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Download, Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, Input, PageHeader, Textarea } from '@/components/ui-migrated';
 import { generateInvoiceHTML, calculateInvoiceTotal } from '@/lib/generators/invoice-generator';
 import {
@@ -18,6 +18,9 @@ import { ClientCreateDialog } from '@/components/clients/client-create-dialog';
 
 export default function CreateInvoicePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const invoiceId = searchParams.get('invoiceId');
+    const clientIdParam = searchParams.get('clientId');
     const [loading, setLoading] = useState(false);
 
     // Invoice State
@@ -64,11 +67,10 @@ export default function CreateInvoicePage() {
             })
             .catch(console.error);
 
-        // Fetch next invoice number
         fetch('/api/finance/invoices/next-number')
             .then(res => res.json())
             .then(data => {
-                if (data && data.sequence) {
+                if (data && data.sequence && !invoiceId) {
                     setInvoiceData(prev => ({
                         ...prev,
                         sequence: data.sequence,
@@ -77,16 +79,121 @@ export default function CreateInvoicePage() {
                 }
             })
             .catch(console.error);
-    }, []);
+
+        // Handle Edit Mode or Pre-select Client
+        if (invoiceId) {
+            setLoading(true);
+            fetch(`/api/finance/invoices/${invoiceId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data) {
+                        let parsedItems = [];
+                        try {
+                            parsedItems = typeof data.items === 'string' ? JSON.parse(data.items) : data.items;
+                        } catch (e) { console.error("Failed to parse items", e); }
+
+                        setInvoiceData(prev => ({
+                            ...prev,
+                            invoiceNumber: data.invoiceNumber || prev.invoiceNumber,
+                            clientId: data.clientId || '',
+                            clientName: data.clientName || '',
+                            clientAddress: data.clientAddress || '',
+                            businessName: prev.businessName, // Keep agency current, or store in DB? DB doesn't have business info usually
+                            // Adjust date parsing if needed
+                            dueDate: data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : '',
+                            items: parsedItems.length ? parsedItems : prev.items,
+                            taxRate: data.taxRate || 0,
+                            discount: data.discount || 0,
+                            sequence: data.invoiceNumber?.split('-').pop() || prev.sequence,
+                            notes: data.notes || ''
+                        }));
+                    }
+                })
+                .finally(() => setLoading(false));
+        } else if (clientIdParam) {
+            handleClientSelect(clientIdParam);
+        }
+    }, [invoiceId, clientIdParam]);
 
     const handleClientSelect = (clientId: string) => {
         const client = clients.find(c => c.id === clientId);
         if (client) {
-            setInvoiceData((prev) => ({
-                ...prev,
+            const updateData: any = {
                 clientId: client.id,
                 clientName: client.name,
                 clientAddress: client.address || '',
+            };
+
+            // Auto-fill from Package Generator if available
+            if (client.packagePrice && client.packageServices) {
+                try {
+                    const services = JSON.parse(client.packageServices);
+
+                    // Check if it's a custom package or standard
+                    // Ideally we check if services is array of valid items. 
+                    // If it is, map them.
+
+                    let newItems: any[] = [];
+
+                    if (Array.isArray(services) && services.length > 0) {
+                        // It's a list from our custom builder (or standard package services list)
+                        // If it's custom builder, items have individual prices (maybe).
+                        // If not, we might finding price distribution tricky.
+                        // However, for Custom Package, we want individual line items.
+
+                        // Let's see if we can calculate per-item price or just listing them.
+                        // If total package price is differnet from sum of parts (overridden), 
+                        // we need to be careful.
+                        // Strategy: 
+                        // 1. If sum of parts == packagePrice, list explicitly with prices.
+                        // 2. If diff, maybe list first item with adjusted price or Pro-rata?
+                        // Simple approach: List description as breakdown, single line item?
+                        // User requested: "select those services in the fields and same in invoice"
+                        // Implies separate fields.
+
+                        const sumOfParts = services.reduce((acc: number, s: any) => acc + (s.price || 0), 0);
+
+                        if (Math.abs(sumOfParts - client.packagePrice) < 1) {
+                            // Prices match sum of parts, so we can list individually
+                            newItems = services.map((s: any) => ({
+                                description: s.name + (s.description ? ` - ${s.description}` : ''),
+                                quantity: 1,
+                                rate: s.price || 0
+                            }));
+                        } else {
+                            // Prices override. We can't easily assign per-item price.
+                            // Option A: List items with 0 price and one "Package Fee" item.
+                            // Option B: Pro-rata distribution (complex UI).
+                            // Option C: Single line item "Custom Package" with description listing services.
+
+                            // Let's go with Option C for now as it safeguards the total.
+                            const details = services.map((s: any) => s.name).join(', ');
+                            newItems = [{
+                                description: `${client.selectedPackage} - ${details}`,
+                                quantity: 1,
+                                rate: client.packagePrice
+                            }];
+                        }
+                    } else {
+                        // Fallback for old format or empty
+                        newItems = [{
+                            description: `${client.selectedPackage} - Monthly Subscription`,
+                            quantity: 1,
+                            rate: client.packagePrice
+                        }];
+                    }
+
+                    updateData.items = newItems;
+                    toast.success(`Loaded package: ${client.selectedPackage}`);
+
+                } catch (e) {
+                    console.error("Failed to parse package info", e);
+                }
+            }
+
+            setInvoiceData((prev) => ({
+                ...prev,
+                ...updateData,
             }));
             toast.success('Client details loaded');
         }
@@ -134,15 +241,19 @@ export default function CreateInvoicePage() {
             const { total } = calculateInvoiceTotal(invoiceData);
             const fullInvoiceNo = `AG-${new Date().getFullYear().toString().slice(-2)}${invoiceData.sequence}`;
 
-            const res = await fetch('/api/finance/invoices', {
-                method: 'POST',
+            const url = invoiceId ? `/api/finance/invoices/${invoiceId}` : '/api/finance/invoices';
+            const method = invoiceId ? 'PATCH' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     invoiceNumber: fullInvoiceNo,
                     amount: total,
                     currency: 'INR',
-                    status: 'draft',
+                    status: invoiceId ? undefined : 'draft', // Don't reset status on edit unless needed
                     dueDate: invoiceData.dueDate || new Date().toISOString(),
+                    clientId: invoiceData.clientId,
                     clientName: invoiceData.clientName,
                     clientAddress: invoiceData.clientAddress,
                     items: invoiceData.items,

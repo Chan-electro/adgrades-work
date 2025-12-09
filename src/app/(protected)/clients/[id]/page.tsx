@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    FileText, Receipt, Package, Clock, ArrowRight, Play, DollarSign, Activity,
+    FileText, Receipt, Package, Clock, ArrowRight, ArrowLeft, Play, DollarSign, Activity,
     Download, Plus, Mail, Phone, Globe, MapPin, Building2, User, Trash2,
     Briefcase, Target, Search
 } from 'lucide-react';
@@ -12,6 +12,9 @@ import { Card, Button, Badge, PageHeader } from '@/components/ui-migrated';
 import { SmallOrb, LoadingBar, SignatureAnimation, ConfettiEffect, CountUp } from '@/components/visuals';
 import { toast } from 'sonner';
 import { DeleteClientDialog } from '@/components/clients/delete-client-dialog';
+import { ClientEditDialog } from '@/components/clients/client-edit-dialog';
+import { PackageGenerator } from '@/components/packages/package-generator';
+import { SavedPackagesList } from '@/components/packages/saved-packages-list';
 
 // --- Sub Components for Tabs ---
 
@@ -74,31 +77,76 @@ const ResearchTab = ({ onRunResearch, isRunning, hasResearch, docs }: any) => (
     </div>
 );
 
-const PackagesTab = ({ onGenerateAgreement }: any) => (
-    <div className="space-y-4">
-        <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Packages & Proposals</h3>
-        </div>
-        <Card>
-            <div className="p-6 flex justify-between items-center">
-                <div className="flex gap-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600">
-                        <Package className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-lg">Q3 Growth Accelerator</h4>
-                        <p className="text-sm text-zinc-500">SEO + Paid Ads • 6 Months</p>
-                        <p className="mt-1 font-mono font-medium">$12,500 / month</p>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm">View Proposal</Button>
-                    <Button onClick={onGenerateAgreement}>Generate Agreement</Button>
-                </div>
+const PackagesTab = ({ clientId, onGenerateAgreement }: any) => {
+    const [showGenerator, setShowGenerator] = useState(false);
+
+    const handlePackageSelect = async (pkg: any) => {
+        try {
+            // Parse services if string, or use as is
+            let services = pkg.services;
+            if (typeof services === 'string') {
+                try {
+                    services = JSON.parse(services);
+                } catch (e) {
+                    services = [];
+                }
+            }
+
+            const res = await fetch(`/api/clients/${clientId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    selectedPackage: pkg.name,
+                    packagePrice: pkg.price,
+                    packageServices: JSON.stringify(services)
+                })
+            });
+
+            if (res.ok) {
+                toast.success(`Package "${pkg.name}" assigned to client!`);
+                onGenerateAgreement(); // Refresh parent
+            } else {
+                toast.error('Failed to assign package');
+            }
+        } catch (error) {
+            toast.error('Error assigning package');
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Packages & Proposals</h3>
+                {!showGenerator && (
+                    <Button onClick={() => setShowGenerator(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create New / Select Standard
+                    </Button>
+                )}
+                {showGenerator && (
+                    <Button variant="outline" onClick={() => setShowGenerator(false)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Saved Packages
+                    </Button>
+                )}
             </div>
-        </Card>
-    </div>
-);
+
+            {showGenerator ? (
+                <PackageGenerator preselectedClientId={clientId} onSuccess={onGenerateAgreement} />
+            ) : (
+                <div className="space-y-4">
+                    <Card className="p-6 bg-muted/20 border-dashed">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-medium">Saved Packages Library</h4>
+                            <p className="text-xs text-muted-foreground">Packages you've created and saved in the Custom Builder</p>
+                        </div>
+                        <SavedPackagesList selectable={true} onSelect={handlePackageSelect} />
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const AgreementsTab = ({ agreements, onSign, onDownload, agreementDocs }: any) => (
     <div className="space-y-4">
@@ -154,7 +202,7 @@ const AgreementsTab = ({ agreements, onSign, onDownload, agreementDocs }: any) =
     </div>
 );
 
-const InvoicesTab = ({ invoices, onPay }: any) => (
+const InvoicesTab = ({ invoices, onPay, onEdit }: any) => (
     <div className="space-y-4">
         <h3 className="text-lg font-semibold">Invoices</h3>
         <Card>
@@ -175,14 +223,23 @@ const InvoicesTab = ({ invoices, onPay }: any) => (
                             <td className="p-4 font-medium">${inv.amount?.toLocaleString()}</td>
                             <td className="p-4 text-zinc-500">{inv.dueDate || 'N/A'}</td>
                             <td className="p-4">
-                                <Badge variant={inv.status === 'Paid' ? 'success' : inv.status === 'Overdue' ? 'danger' : 'neutral'}>
+                                <Badge variant={inv.status?.toLowerCase() === 'paid' ? 'success' : inv.status?.toLowerCase() === 'overdue' ? 'danger' : 'neutral'}>
                                     {inv.status}
                                 </Badge>
                                 {inv.justPaid && <div className="absolute left-1/2 top-1/2"><ConfettiEffect active={true} /></div>}
                             </td>
                             <td className="p-4 text-right">
-                                {inv.status !== 'Paid' && (
-                                    <Button size="sm" variant="outline" onClick={() => onPay(inv.id)}>Mark Paid</Button>
+                                {inv.status?.toLowerCase() !== 'paid' && (
+                                    <div className="flex gap-2 justify-end">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => onEdit(inv.id)}
+                                        >
+                                            <FileText className="h-4 w-4 mr-1" /> Edit
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => onPay(inv.id)}>Mark Paid</Button>
+                                    </div>
                                 )}
                             </td>
                         </tr>
@@ -298,6 +355,12 @@ export default function ClientDetailPage() {
         router.push('/clients');
     };
 
+    const handleClientUpdated = (updatedClient: any) => {
+        setClient(updatedClient);
+        toast.success("Client updated successfully");
+        router.refresh();
+    };
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Activity },
         { id: 'research', label: 'Research', icon: Search },
@@ -314,6 +377,14 @@ export default function ClientDetailPage() {
         return <div className="flex h-[50vh] items-center justify-center text-muted-foreground">Client not found</div>;
     }
 
+    // Dynamic Timeline
+    const timelineEvents = [
+        { text: `Client Profile Created`, date: client.createdAt, type: 'creation' },
+        ...invoices.map(i => ({ text: `Invoice #${i.invoiceNumber} Generated`, date: i.createdAt, type: 'invoice' })),
+        ...agreements.map(a => ({ text: `Agreement Created`, date: a.createdAt, type: 'agreement' })),
+        ...researchDocs.map(r => ({ text: `Research: ${r.title}`, date: r.createdAt, type: 'research' }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     return (
         <div className="space-y-8">
             {/* Header Card - Revamped */}
@@ -326,12 +397,12 @@ export default function ClientDetailPage() {
                 <div className="p-6 pt-0 relative">
                     <div className="-mt-12 mb-4 flex flex-col lg:flex-row justify-between lg:items-end gap-4">
                         <div className="flex items-end gap-4">
-                            <div className="h-24 w-24 rounded-xl bg-white dark:bg-zinc-900 p-1 shadow-lg flex-shrink-0">
+                            <div className="h-24 w-24 rounded-xl bg-white dark:bg-zinc-900 p-1 shadow-lg flex-shrink-0 ring-2 ring-white dark:ring-zinc-950">
                                 <div className="h-full w-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-3xl font-bold text-white">
                                     {client.name.substring(0, 2).toUpperCase()}
                                 </div>
                             </div>
-                            <div className="pb-1">
+                            <div className="pb-1 translate-y-4">
                                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">{client.name}</h1>
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {client.industry && (
@@ -349,27 +420,36 @@ export default function ClientDetailPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button onClick={handleRunResearch} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                                <Search className="mr-2 h-4 w-4" /> Run Research
-                            </Button>
-                            <Button variant="outline" onClick={() => router.push(`/agreements/create?clientId=${id}`)}>
-                                <Plus className="mr-2 h-4 w-4" /> Agreement
-                            </Button>
-                            <Button variant="outline" onClick={() => router.push(`/invoices/create?clientId=${id}`)}>
-                                <Plus className="mr-2 h-4 w-4" /> Invoice
-                            </Button>
-                            <DeleteClientDialog
-                                clientId={id}
-                                clientName={client.name}
-                                onDeleted={handleClientDeleted}
-                                trigger={
-                                    <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                }
-                            />
-                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <ClientEditDialog
+                            client={client}
+                            onClientUpdated={handleClientUpdated}
+                            trigger={
+                                <Button variant="outline">
+                                    Edit Profile
+                                </Button>
+                            }
+                        />
+                        <Button onClick={handleRunResearch} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                            <Search className="mr-2 h-4 w-4" /> Run Research
+                        </Button>
+                        <Button variant="outline" onClick={() => router.push(`/agreements/create?clientId=${id}`)}>
+                            <Plus className="mr-2 h-4 w-4" /> Agreement
+                        </Button>
+                        <Button variant="outline" onClick={() => router.push(`/invoices/create?clientId=${id}`)}>
+                            <Plus className="mr-2 h-4 w-4" /> Invoice
+                        </Button>
+                        <DeleteClientDialog
+                            clientId={id}
+                            clientName={client.name}
+                            onDeleted={handleClientDeleted}
+                            trigger={
+                                <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            }
+                        />
                     </div>
                 </div>
             </Card>
@@ -423,7 +503,14 @@ export default function ClientDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-muted-foreground">Website</p>
-                                    <a href={client.website} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">{client.website}</a>
+                                    <a
+                                        href={client.website?.startsWith('http') ? client.website : `https://${client.website}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-blue-600 hover:underline"
+                                    >
+                                        {client.website}
+                                    </a>
                                 </div>
                             </div>
                         )}
@@ -516,17 +603,20 @@ export default function ClientDetailPage() {
                         <div className="grid md:grid-cols-3 gap-6">
                             <Card className="p-6 md:col-span-2">
                                 <h3 className="font-semibold mb-4">Activity Timeline</h3>
-                                <div className="space-y-6 pl-2 border-l border-zinc-200 dark:border-zinc-800 ml-2">
-                                    {[
-                                        { text: 'Client Profile Viewed', date: 'Just now' },
-                                        { text: `Profile for ${client.name} created`, date: new Date(client.createdAt).toLocaleDateString() },
-                                    ].map((item, i) => (
+                                <div className="space-y-6 pl-2 border-l border-zinc-200 dark:border-zinc-800 ml-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                    {timelineEvents.length > 0 ? timelineEvents.map((item, i) => (
                                         <div key={i} className="relative pl-6">
-                                            <div className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700 ring-4 ring-white dark:ring-zinc-950" />
-                                            <p className="text-sm font-medium">{item.text}</p>
-                                            <p className="text-xs text-zinc-500">{item.date}</p>
+                                            <div className={`absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white dark:ring-zinc-950 ${item.type === 'creation' ? 'bg-green-500' :
+                                                item.type === 'invoice' ? 'bg-amber-500' :
+                                                    item.type === 'agreement' ? 'bg-blue-500' :
+                                                        'bg-purple-500'
+                                                }`} />
+                                            <p className="text-sm font-medium text-foreground">{item.text}</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleDateString()} • {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <p className="text-sm text-muted-foreground pl-4">No recent activity</p>
+                                    )}
                                 </div>
                             </Card>
 
@@ -565,13 +655,19 @@ export default function ClientDetailPage() {
                         <ResearchTab isRunning={isResearchRunning} hasResearch={hasResearch} docs={researchDocs} onRunResearch={handleRunResearch} />
                     )}
                     {activeTab === 'packages' && (
-                        <PackagesTab onGenerateAgreement={() => router.push(`/agreements/create?clientId=${id}`)} />
+                        <PackagesTab clientId={id} onGenerateAgreement={() => {
+                            router.refresh();
+                        }} />
                     )}
                     {activeTab === 'agreements' && (
                         <AgreementsTab agreements={agreements} onSign={handleSignAgreement} onDownload={handleDownloadAgreement} agreementDocs={agreementDocs} />
                     )}
                     {activeTab === 'invoices' && (
-                        <InvoicesTab invoices={invoices} onPay={handlePayInvoice} />
+                        <InvoicesTab
+                            invoices={invoices}
+                            onPay={handlePayInvoice}
+                            onEdit={(id: string) => router.push(`/invoices/create?invoiceId=${id}`)}
+                        />
                     )}
                 </motion.div>
             </AnimatePresence>

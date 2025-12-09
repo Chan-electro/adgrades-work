@@ -9,8 +9,8 @@ export async function GET() {
         if (!agency) {
             agency = await prisma.agency.create({
                 data: {
-                    name: "AdGrades Agency",
-                    address: "123 Creative Blvd, Design City",
+                    name: "AdGrades Creative Agency",
+                    address: "VINAYAKA INDUSTRIES, BEHIND KMF CATTEL FEED FACTORY, GANDHINAGAR, K HOSKOPPAL, HASSAN-573201",
                     website: "https://adgrades.work",
                 },
             });

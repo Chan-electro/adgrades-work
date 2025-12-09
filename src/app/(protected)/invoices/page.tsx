@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, FileText } from 'lucide-react';
 import { generateInvoiceHTML } from '@/lib/generators/invoice-generator';
 import { toast } from 'sonner';
 type Invoice = {
@@ -166,13 +166,21 @@ export default function InvoicesPage() {
                                         {invoice.status.toUpperCase()}
                                     </span>
                                     {invoice.status !== 'paid' && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => markAsPaid(invoice.id, invoice.amount)}
-                                        >
-                                            Mark Paid
-                                        </Button>
+                                        <>
+                                            <Link href={`/invoices/create?invoiceId=${invoice.id}`}>
+                                                <Button size="sm" variant="ghost">
+                                                    <FileText className="w-3 h-3 mr-1" />
+                                                    Edit
+                                                </Button>
+                                            </Link>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => markAsPaid(invoice.id, invoice.amount)}
+                                            >
+                                                Mark Paid
+                                            </Button>
+                                        </>
                                     )}
                                     <Button
                                         size="sm"
@@ -186,7 +194,7 @@ export default function InvoicesPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p>Client: {getClientName(invoice)}</p>
+                            <p>Client: <Link href={`/clients/${invoice.clientId}`} className="hover:underline text-blue-600">{getClientName(invoice)}</Link></p>
                             <p>Amount: {invoice.currency} {invoice.amount}</p>
                             <p>Due Date: {new Date(invoice.dueDate).toLocaleDateString()}</p>
                         </CardContent>

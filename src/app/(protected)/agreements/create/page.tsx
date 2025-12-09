@@ -17,6 +17,15 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils"
 // Import ClientCreateDialog if path allows, or assume shared components
 import { ClientCreateDialog } from '@/components/clients/client-create-dialog';
+import { INDIVIDUAL_SERVICES, ServiceItem } from '@/lib/constants/package-data';
+
+// Group services by category
+const groupedServices = INDIVIDUAL_SERVICES.reduce((acc, service) => {
+    const cat = service.category || 'Other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(service);
+    return acc;
+}, {} as Record<string, ServiceItem[]>);
 
 function CreateAgreementContent() {
     const router = useRouter();
@@ -104,12 +113,62 @@ function CreateAgreementContent() {
     }, [loadId]);
 
     const handleClientSelectInternal = (client: any) => {
-        setFormData((prev) => ({
-            ...prev,
+        const updateData: any = {
             clientId: client.id,
             clientName: client.name,
             clientAddress: client.address || '',
             clientContact: client.phone || '',
+        };
+
+        // Auto-fill from Package Generator if available
+        if (client.packagePrice) {
+            updateData.firstMonthFee = client.packagePrice.toString();
+            updateData.totalFee = client.packagePrice.toString(); // Assuming 1 month term initially or let user changing term update it
+            // Maybe set term to 1 if it's monthly? Default is 3. Let's keep default 3 but fill fee.
+        }
+
+        if (client.packageServices) {
+            try {
+                const pkgServices = JSON.parse(client.packageServices);
+
+                const newSelectedServices: any[] = [];
+                const newCustomServices: any[] = [];
+
+                pkgServices.forEach((s: any) => {
+                    // Try to find in INDIVIDUAL_SERVICES
+                    const matchedService = INDIVIDUAL_SERVICES.find(ind => ind.name === s.name);
+
+                    if (matchedService) {
+                        newSelectedServices.push({
+                            id: Date.now() + Math.random(),
+                            serviceId: matchedService.name,
+                            serviceLabel: matchedService.category || 'Service',
+                            tier: matchedService.name,
+                            price: matchedService.price ? `₹${matchedService.price}` : 'TBD',
+                            description: matchedService.description,
+                            fullDescription: matchedService.items ? matchedService.items.join(', ') : ''
+                        });
+                    } else {
+                        newCustomServices.push({
+                            id: Date.now() + Math.random(),
+                            title: s.name,
+                            description: `${s.description || ''} ${s.items ? '- ' + s.items.join(', ') : ''}`
+                        });
+                    }
+                });
+
+                setSelectedServices(newSelectedServices);
+                setCustomServices(newCustomServices);
+                toast.success(`Loaded package: ${client.selectedPackage}`);
+
+            } catch (e) {
+                console.error("Failed to parse package services", e);
+            }
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            ...updateData,
         }));
     };
 
@@ -127,84 +186,18 @@ function CreateAgreementContent() {
         toast.success('Client created and selected');
     };
 
-    // Services Definition (Copied from original)
-    const services = [
-        {
-            id: 'smma',
-            label: 'Social Media Management',
-            tiers: [
-                { key: 'smma_basic', label: 'Basic', price: '₹12,999/month', description: '1 platform • 12 static posts • 8 story frames • Monthly report • 1 revision' },
-                { key: 'smma_pro', label: 'Pro', price: '₹26,999/month', description: '2 platforms • 16 static posts • 12 story frames • A/B testing • 2 revisions' },
-                { key: 'smma_superb', label: 'Superb', price: '₹42,999/month', description: '3 platforms • 20 static posts • 16 story frames • Weekly calls' }
-            ],
-            fullDescription: 'Comprehensive social media management including account audit, monthly content calendar, caption writing with hashtag strategy, community management (responding to comments/DMs during working hours), and monthly performance reports with actionable insights.'
-        },
-        {
-            id: 'video_editing',
-            label: 'Video Editing',
-            tiers: [
-                { key: 'video_basic_short', label: 'Basic Reel (≤60s)', price: '₹1,500/reel', description: 'Clean edit, auto captions, 1 track, 1 revision' },
-                { key: 'video_basic_long', label: 'Basic Reel (61-120s)', price: '₹2,500/reel', description: 'Extended basic edit' },
-                { key: 'video_intermediate_short', label: 'Intermediate (≤60s)', price: '₹3,500/reel', description: 'Storyboard, motion text, SFX, 2 revisions' },
-                { key: 'video_intermediate_long', label: 'Intermediate (61-120s)', price: '₹6,000/reel', description: 'Enhanced features for longer content' },
-                { key: 'video_commercial', label: 'Commercial Ad', price: 'From ₹25,000', description: 'Full post-production with color grading' },
-                { key: 'video_explainer', label: 'Explainer/2D Animation', price: 'From ₹20,000/min', description: 'Script, design, animation, VO direction' }
-            ],
-            fullDescription: 'Professional post-production editing.'
-        },
-        {
-            id: 'performance_marketing',
-            label: 'Performance Marketing',
-            tiers: [
-                { key: 'ads_basic', label: 'Basic', price: '₹18,000/month', description: 'Single platform (Meta OR Google) • Ad spend ≤₹40,000' },
-                { key: 'ads_pro', label: 'Pro', price: '₹30,000/month', description: '2 platforms • Landing page feedback • Ad spend ≤₹80,000' },
-                { key: 'ads_superb', label: 'Superb', price: '₹50,000/month', description: 'Full integration • Creative testing • Ad spend ≤₹1,20,000' }
-            ],
-            fullDescription: 'Complete campaign setup and optimization.'
-        },
-        {
-            id: 'website',
-            label: 'Website Development',
-            tiers: [
-                { key: 'site_basic', label: 'Basic', price: '₹19,999 + ₹1,500/month', description: '5 pages • Responsive • On-page SEO' },
-                { key: 'site_standard', label: 'Standard (CMS)', price: '₹34,999 + ₹2,500/month', description: '10 pages • Blog/CMS • 2 revisions' },
-                { key: 'site_premium', label: 'Premium', price: '₹59,999 + ₹3,500/month', description: '20 pages • High-fidelity design • Priority SLA' },
-                { key: 'site_ecommerce', label: 'E-commerce', price: '₹74,999 + ₹6,000/month', description: '100 SKUs • Payment gateway • CRO elements' }
-            ],
-            fullDescription: 'End-to-end website builds and maintenance.'
-        },
-        {
-            id: 'funnel',
-            label: 'Funnel Marketing',
-            tiers: [
-                { key: 'funnel_custom', label: 'Custom Quote', price: 'Contact to scope', description: 'Landing pages • Automation • A/B testing' }
-            ],
-            fullDescription: 'Strategic blueprints for sales funnels.'
-        },
-        {
-            id: 'shoots',
-            label: 'Ad Shoots',
-            tiers: [
-                { key: 'shoot_custom', label: 'Quoted Per Shoot', price: 'Contact to scope', description: 'Moodboards • Shoot direction • 5-10 edited outputs' }
-            ],
-            fullDescription: 'Complete pre-production planning and execution.'
-        }
-    ];
+    // Services Definition
 
-    const addService = (serviceId: string, tier: string) => {
-        const service = services.find(s => s.id === serviceId);
-        if (!service) return;
-        const selectedTier = service.tiers.find(t => t.key === tier);
-        if (!selectedTier) return;
 
+    const addService = (service: ServiceItem) => {
         setSelectedServices([...selectedServices, {
             id: Date.now(),
-            serviceId,
-            serviceLabel: service.label,
-            tier: selectedTier.label,
-            price: selectedTier.price,
-            description: selectedTier.description,
-            fullDescription: service.fullDescription
+            serviceId: service.name, // Use name as ID
+            serviceLabel: service.category || 'Service',
+            tier: service.name,
+            price: service.price ? `₹${service.price}` : 'TBD',
+            description: service.description,
+            fullDescription: service.items ? service.items.join(', ') : ''
         }]);
     };
 
@@ -351,19 +344,21 @@ function CreateAgreementContent() {
                     {/* Simplified Services Selection UI */}
                     <div className="bg-card rounded-xl shadow-lg p-6 border border-border">
                         <h2 className="text-xl font-bold mb-4">Services</h2>
-                        <div className="grid gap-2">
-                            {services.map(s => (
-                                <div key={s.id}>
-                                    <Label className="font-bold">{s.label}</Label>
-                                    <div className="flex flex-wrap gap-2 mt-1">
-                                        {s.tiers.map(t => (
+                        <div className="grid gap-4">
+                            {Object.entries(groupedServices).map(([category, items]) => (
+                                <div key={category}>
+                                    <Label className="font-bold text-lg mb-2 block">{category}</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {items.map(service => (
                                             <Button
-                                                key={t.key}
-                                                variant={selectedServices.some(sel => sel.serviceId === s.id && sel.tier === t.label) ? "default" : "outline"}
+                                                key={service.name}
+                                                variant={selectedServices.some(sel => sel.tier === service.name) ? "default" : "outline"}
                                                 size="sm"
-                                                onClick={() => addService(s.id, t.key)}
+                                                onClick={() => addService(service)}
+                                                className="h-auto py-2 px-3 flex flex-col items-start gap-1"
                                             >
-                                                {t.label}
+                                                <span className="font-medium">{service.name}</span>
+                                                {service.price && <span className="text-[10px] opacity-80">₹{service.price.toLocaleString()}</span>}
                                             </Button>
                                         ))}
                                     </div>

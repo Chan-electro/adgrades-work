@@ -17,7 +17,7 @@ export function generateInvoiceHTML(invoiceData: any) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AdGrades Invoice ${fullInvoiceNo}</title>
+    <title>AdGrades Creative Agency Invoice ${fullInvoiceNo}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4; margin: 0; }
@@ -139,7 +139,7 @@ export function generateInvoiceHTML(invoiceData: any) {
                 <div class="party-title">FROM</div>
                 <div class="party-content">
                     <div class="party-name">Chandan Krishna</div>
-                    <div>CEO, AdGrades</div>
+                    <div>CEO, AdGrades Creative Agency</div>
                     <div>Hassan 573201</div>
                     <div>9686314869 | info@adgrades.in</div>
                 </div>

@@ -6,6 +6,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const { id } = await params;
         const client = await prisma.client.findUnique({
             where: { id },
+            include: {
+                invoices: { orderBy: { createdAt: 'desc' } },
+                agreements: { orderBy: { createdAt: 'desc' } },
+                researchDocs: { orderBy: { createdAt: 'desc' } }
+            }
         });
 
         if (!client) {
@@ -80,3 +85,32 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 }
 
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await params;
+        const body = await req.json();
+
+        // Allowed fields to update
+        const {
+            selectedPackage,
+            packagePrice,
+            packageServices,
+            // Add other fields here if needed in future
+        } = body;
+
+        const updatedClient = await prisma.client.update({
+            where: { id },
+            data: {
+                selectedPackage,
+                packagePrice,
+                packageServices,
+            },
+        });
+
+        return NextResponse.json(updatedClient);
+    } catch (error) {
+        console.error('Error updating client:', error);
+        return NextResponse.json({ error: 'Failed to update client' }, { status: 500 });
+    }
+}

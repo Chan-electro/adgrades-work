@@ -118,17 +118,23 @@ model Invoice {
   dueDate       DateTime
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  payments      Payment[]
+  transactions  Transaction[]
 }
 
-model Payment {
+
+model Transaction {
   id            String   @id @default(cuid())
   invoiceId     String?
   amount        Float
-  type          String   // online, offline
+  type          String   // "INCOME" or "EXPENSE"
+  method        String   // "online", "offline"
   transactionId String?
+  description   String?
+  personName    String?
+  isEdited      Boolean  @default(false)
   date          DateTime @default(now())
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   invoice       Invoice? @relation(fields: [invoiceId], references: [id])
 }
@@ -148,6 +154,11 @@ model Client {
   niche             String?   // Specific niche
   businessModel     String?   // B2B, B2C, etc.
   createdAt       DateTime  @default(now())
+  // Package generator fields
+  selectedPackage   String?
+  packagePrice      Float?
+  packageServices   String?   // JSON string of inclusive services
+  
   updatedAt       DateTime  @updatedAt
   
   invoices      Invoice[]
@@ -178,7 +189,7 @@ model Agreement {
 
 model Agency {
   id        String   @id @default(cuid())
-  name      String   @default("AdGrades Agency")
+  name      String   @default("AdGrades Creative Agency")
   address   String?
   website   String?
   taxId     String?
@@ -195,4 +206,14 @@ model Document {
   agreementId String?
   clientId   String?
   createdAt  DateTime @default(now())
+}
+
+model CreatedPackage {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  services    String   // JSON string of services
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
